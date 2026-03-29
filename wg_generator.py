@@ -248,17 +248,13 @@ class WGGenerator:
                     #   so we can reach all its clients.
 
 
-                    combined: set[str] = set()
+                    combined: set[str] = set(peer.auth_networks)
 
-                    # 1. Allow the remote server's full authoritative networks (its LAN + clients)
-                    for net in peer.auth_networks:
-                        combined.add(net)
-                    # 2. Allow the remote server's IP address that belongs to THIS server's network
+                    #   Allow the remote server's IP address that belongs to THIS server's network
                     #    (this is the "client IP" from our point of view)
-                    if node.auth_networks:
-                        node_net_str = next(iter(node.auth_networks))
+                    if node.auth_networks and peer.assigned_ips:
                         try:
-                            node_net = ipaddress.ip_network(node_net_str)
+                            node_net = ipaddress.ip_network(next(iter(node.auth_networks)))
                             for peer_ip_cidr in peer.assigned_ips:
                                 try:
                                     peer_ip = ipaddress.ip_interface(peer_ip_cidr).ip
@@ -272,9 +268,14 @@ class WGGenerator:
 
                     lines.append(f"AllowedIPs = {', '.join(sorted(combined))}")
 
+                else:
+                    lines.append(f"AllowedIPs = {', '.join(sorted(peer.auth_networks))}")
+
+
             # Write the config file
             with open(os.path.join(output_dir, f"{name}.conf"), "w", encoding="utf-8") as f:
                 f.write("\n".join(lines))
+                f.write("\n")
 
         print(f"Success: .conf files saved to ./{output_dir}")
 
